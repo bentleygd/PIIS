@@ -270,8 +270,8 @@ class PIIScanner:
                             for excel_sheet in self.ssn_excel:
                                 if excel_sheet['name'] == path:
                                     excel_sheet['count'] += 1
-                else:
-                    scan_result = False
+                    else:
+                        scan_result = False
             wb.unload_sheet(sheet)
         return scan_result
 
