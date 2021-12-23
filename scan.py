@@ -18,9 +18,9 @@ def main():
     )
     # Getting config.
     config = ConfigParser()
-    config.read('example.ini')
+    config.read('piis.cnf')
     # Getting variables from config file.
-    thread_count = int(config['core']['thred_count'])
+    thread_count = int(config['core']['thread_count'])
     # Instantiating PII Scanner
     scanner = PIIScanner()
     file_list = scanner.file_list
@@ -35,17 +35,48 @@ def main():
             for _file in file_list:
                 # Checking for file extension in order to execute the
                 # appropriate PII scan method.
-                if str(_file).endswith(('xlsx', 'xls')):
-                    log.debug('Scanning %s for SSNs' % _file)
-                    executor.submit(scanner.ssn_scan_excel, _file)
-                elif str(_file).endswith(('pgp', 'gpg')):
-                    log.debug('Skipping over %s' % _file)
+                # Checking for > 2003 versions of Excel.
+                if str(_file).endswith('.xlsx'):
+                    log.debug('Scanning %r for SSNs' % _file)
+                    scan = executor.submit(scanner.ssn_scan_excel, _file)
+                    if scan is True:
+                        log.info('SSN detected in %r' % _file)
+                    else:
+                        log.info('No SSN found in %r' % _file)
+                # Checking for 97-2003 versions of Excel.
+                elif str(_file).endswith('.xls'):
+                    log.debug('Scanning %r for SSNs' % _file)
+                    scan = executor.submit(scanner.ssn_scan_old_excel, _file)
+                    if scan is True:
+                        log.info('SSN detected in %r' % _file)
+                    else:
+                        log.info('No SSN found in %r' % _file)
+                # Checking for CSV.
+                elif str(_file).endswith('.csv'):
+                    log.debug('Scanning %r for SSNs' % _file)
+                    scan = executor.submit(scanner.ssn_scan_csv, _file)
+                    if scan is True:
+                        log.info('SSN detected in %r' % _file)
+                    else:
+                        log.info('No SSN found in %r' % _file)
+                # Checking for known encrypted files.
+                elif str(_file).endswith(('.pgp', '.gpg')):
+                    log.info('Encrypted file.  Skipping over %r' % _file)
                     pass
+                # Default check for everything else.
                 else:
-                    log.debug('Scanning %s for SSNs' % _file)
-                    executor.submit(scanner.ssn_scan_file, _file)
+                    log.debug('Scanning %r for SSNs' % _file)
+                    scan = executor.submit(scanner.ssn_scan_file, _file)
+                    if scan is True:
+                        log.info('SSN detected in %r' % _file)
+                    else:
+                        log.info('No SSN found in %r' % _file)
         except PermissionError:
-            log.error('Permission error when scanning %s' % _file)
+            log.error('Permission error when scanning %r' % _file)
+        except Exception:
+            log.exception(
+                'Unable to open %r. See stack trace for details' % _file
+                )
     finished = time()
     elapsed = finished - start
     # Logging completed scan info.
