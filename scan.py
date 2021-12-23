@@ -38,38 +38,22 @@ def main():
                 # Checking for > 2003 versions of Excel.
                 if str(_file).endswith('.xlsx'):
                     log.debug('Scanning %r for SSNs' % _file)
-                    scan = executor.submit(scanner.ssn_scan_excel, _file)
-                    if scan is True:
-                        log.info('SSN detected in %r' % _file)
-                    else:
-                        log.info('No SSN found in %r' % _file)
+                    executor.submit(scanner.ssn_scan_excel, _file)
                 # Checking for 97-2003 versions of Excel.
                 elif str(_file).endswith('.xls'):
                     log.debug('Scanning %r for SSNs' % _file)
-                    scan = executor.submit(scanner.ssn_scan_old_excel, _file)
-                    if scan is True:
-                        log.info('SSN detected in %r' % _file)
-                    else:
-                        log.info('No SSN found in %r' % _file)
+                    executor.submit(scanner.ssn_scan_old_excel, _file)
                 # Checking for CSV.
                 elif str(_file).endswith('.csv'):
                     log.debug('Scanning %r for SSNs' % _file)
-                    scan = executor.submit(scanner.ssn_scan_csv, _file)
-                    if scan is True:
-                        log.info('SSN detected in %r' % _file)
-                    else:
-                        log.info('No SSN found in %r' % _file)
+                    executor.submit(scanner.ssn_scan_csv, _file)
                 # Checking for known encrypted files.
                 elif str(_file).endswith(('.pgp', '.gpg')):
                     log.info('Encrypted file.  Skipping over %r' % _file)
                 # Default check for everything else.
                 else:
                     log.debug('Scanning %r for SSNs' % _file)
-                    scan = executor.submit(scanner.ssn_scan_file, _file)
-                    if scan is True:
-                        log.info('SSN detected in %r' % _file)
-                    else:
-                        log.info('No SSN found in %r' % _file)
+                    executor.submit(scanner.ssn_scan_file, _file)
         except PermissionError:
             log.error('Permission error when scanning %r' % _file)
         except Exception:

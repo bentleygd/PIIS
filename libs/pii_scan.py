@@ -111,11 +111,12 @@ class PIIScanner:
         file_path - str(), A file-like object to scan for patterns.
 
         Output:
-        scan_result - Bool(), True or False depending on the presence
-        of the pattern.
+        scan_result - Bool(), True if a SSN is found, false otherwise.
+        This value is returned only for testing purposes.
 
         Exceptions:
-        None."""
+        PermissionError - Occurs when a file cannot be opened due to
+        invalid permissions."""
         # Looking for SSNs in each line of the file-like object.
         try:
             file_object = open(file_path, 'r')
@@ -143,6 +144,7 @@ class PIIScanner:
                     self.ssn_files.append({
                         'name': file_path,
                         'count': 1})
+                    self.log.info('SSN detected in %s' % file_path)
                 else:
                     for ssn_file in self.ssn_files:
                         if ssn_file['name'] == file_path:
@@ -159,8 +161,8 @@ class PIIScanner:
         path - str(), The location of an Excel workbook.
 
         Output:
-        scan_result - Bool(), True or False depending on the presence
-        of the pattern.
+        scan_result - bool(), True if SSN is found, false if not.  This
+        is only returned for testing purposes.
 
         Exceptions:
         PermissionEorr - Occurs when unable to open the specified workbook due
@@ -201,15 +203,13 @@ class PIIScanner:
                                 'name': path,
                                 'count': 1
                             })
+                            self.log.info('SSN detected in %s' % path)
                         else:
                             for excel_sheet in self.ssn_excel:
                                 if excel_sheet['name'] == path:
                                     excel_sheet['count'] += 1
                     else:
                         scan_result = False
-                        self.log.debug(
-                            'No SSNs found in %s:%s' % (path, sheet.title)
-                        )
         wb.close()
         return scan_result
 
@@ -221,7 +221,8 @@ class PIIScanner:
         path - str(), The file path of the Excel spreadhseet.
 
         Returns:
-        scan_result - bool(), True if there are SSNs in a file, False if not.
+        scan_result - bool(), True if a SSN is found, false if not.  This
+        is returned for testing purposes.
 
         Exceptions:
         PermissionError - If the file cannot be opened due to permissions.
@@ -266,6 +267,7 @@ class PIIScanner:
                                 'name': path,
                                 'count': 1
                             })
+                            self.log.info('SSN detected in %s' % path)
                         else:
                             for excel_sheet in self.ssn_excel:
                                 if excel_sheet['name'] == path:
@@ -283,7 +285,8 @@ class PIIScanner:
         path - str(), The path to the CSV file.
 
         Returns:
-        scan_results - bool(), True/False depending on the scan.
+        scan_results - bool(), True if a SSN is deteced, false if not.
+        This value is returned for testing purposes.
 
         Exceptions:
         PermissionError - Occurs when unable to open the CSV file.
@@ -323,6 +326,7 @@ class PIIScanner:
                         self.ssn_files.append({
                             'name': path,
                             'count': 1})
+                        self.log.info('SSN detected in %s' % path)
                     else:
                         for ssn_file in self.ssn_files:
                             if ssn_file['name'] == path:
