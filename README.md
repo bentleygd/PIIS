@@ -6,6 +6,7 @@ Python scripts used to search for PII data in files.
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/bentleygd/PIIS.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/bentleygd/PIIS/context:python)
 [![Known Vulnerabilities](https://snyk.io/test/github/bentleygd/PIIS/badge.svg)](https://snyk.io/test/github/{username}/{repo})
 ![CodeQL](https://github.com/bentleygd/PIIS/actions/workflows/codeql-analysis.yml/badge.svg)
+![PyTest](https://github.com/bentleygd/PIIS/actions/workflows/pytest.yml/badge.svg)
 
 
 # Purpose
