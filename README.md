@@ -1,6 +1,12 @@
 # PIIS
 Python scripts used to search for PII data in files.
 
+# Badges
+[![Total alerts](https://img.shields.io/lgtm/alerts/g/bentleygd/PIIS.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/bentleygd/PIIS/alerts/)
+[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/bentleygd/PIIS.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/bentleygd/PIIS/context:python)
+[![Known Vulnerabilities](https://snyk.io/test/github/bentleygd/PIIS/badge.svg)](https://snyk.io/test/github/{username}/{repo})
+
+
 # Purpose
 This project was started to provide the capability to quickly discover where files containing PII data may reside in order to create an accurate data inventory of sesnitive data locations.
 

@@ -4,8 +4,10 @@ from logging import getLogger
 from re import search, compile
 from configparser import ConfigParser
 from hashlib import sha256
+from csv import reader
 
 from openpyxl import load_workbook
+from xlrd import open_workbook
 
 
 class GetFileList:
@@ -26,7 +28,7 @@ class GetFileList:
         PermissionError - Occurs if there are permissions problems."""
         log = getLogger(__name__)
         config = ConfigParser()
-        config.read('example.ini')
+        config.read('piis.cnf')
         scan_dirs = config['targets']['scan_dir'].split(',')
         file_list = []
         # Checking to see if the directory exists.
@@ -102,7 +104,8 @@ class PIIScanner:
             return hashed_value
 
     def ssn_scan_file(self, file_path):
-        """Scans a file for the specified pattern, returns True if found.
+        """Scans a file for the specified pattern, returns True if any
+        SSNs are found.
 
         Required Inputs:
         file_path - str(), A file-like object to scan for patterns.
@@ -136,27 +139,21 @@ class PIIScanner:
                 ssn_file_names = [
                     _file['name'] for _file in self.ssn_files
                     ]
-                if file_object.name not in ssn_file_names:
-                    self.log.info(
-                        'SSN detected in ', file_object.name
-                        )
+                if file_path not in ssn_file_names:
                     self.ssn_files.append({
-                        'name': file_object.name,
+                        'name': file_path,
                         'count': 1})
                 else:
                     for ssn_file in self.ssn_files:
-                        if ssn_file['name'] == file_object.name:
+                        if ssn_file['name'] == file_path:
                             ssn_file['count'] += 1
             else:
-                # The lack of SSNs is not enough reason to log as info
-                # as this should be the expected outcome.
                 scan_result = False
-                self.log.debug('No SSNs found in ', file_object.name)
         file_object.close()
         return scan_result
 
     def ssn_scan_excel(self, path):
-        """Scans an Excel work book for SSNs, returns true if any are found.
+        """Scans an xlsx Excel work book for SSNs, returns true if any are found.
 
         Required Input:
         path - str(), The location of an Excel workbook.
@@ -166,7 +163,9 @@ class PIIScanner:
         of the pattern.
 
         Exceptions:
-        OSError - Occurs when unable to open the specified workbook."""
+        PermissionEorr - Occurs when unable to open the specified workbook due
+        to invalid permissions.
+        Exception - All other exceptions."""
         try:
             wb = load_workbook(path)
         except PermissionError:
@@ -174,7 +173,7 @@ class PIIScanner:
                 'Unable to open %s due to permission error.' % path
             )
         except Exception:
-            self.log.exception('Unable to open ', path)
+            self.log.exception('Unable to open %s.  See stack trace.' % path)
         # Iterating through each sheet in a workbook.
         for sheet in wb:
             # Iterating through the rows of the worksheet.
@@ -198,9 +197,6 @@ class PIIScanner:
                             _file['name'] for _file in self.ssn_excel
                             ]
                         if path not in excel_file_names:
-                            self.log.info(
-                                'SSN detected in %s:%s' % (path, sheet.title)
-                            )
                             self.ssn_excel.append({
                                 'name': path,
                                 'count': 1
@@ -215,4 +211,123 @@ class PIIScanner:
                             'No SSNs found in %s:%s' % (path, sheet.title)
                         )
         wb.close()
+        return scan_result
+
+    def ssn_scan_old_excel(self, path):
+        """Scan xls format Excel spreasheets for SSNs and returns true if
+        any are found.
+
+        Required Input:
+        path - str(), The file path of the Excel spreadhseet.
+
+        Returns:
+        scan_result - bool(), True if there are SSNs in a file, False if not.
+
+        Exceptions:
+        PermissionError - If the file cannot be opened due to permissions.
+        Exception - All other reasons."""
+        # Opening the workbook.
+        try:
+            wb = open_workbook(filename=path)
+        except PermissionError:
+            self.log.error('Unable to open %s due to permissions error' % path)
+        except Exception:
+            self.log.exception(
+                'Exception ocurred when openeing %s.  See stack trace' % path
+                )
+        # Getting the sheet names in the workbook.
+        sheets = wb.sheet_names()
+        # Iterating through each sheet.
+        for sheet in sheets:
+            current_sheet = wb.sheet_by_name(sheet)
+            # Iterating through each row and creating a list of the row's
+            # values.
+            for _row in range(current_sheet.nrows):
+                values = current_sheet.row_values(_row)
+                # Itearting through each value.
+                for value in values:
+                    # Perforrming SSN search through each value.
+                    search_result = search(self.ssn, str(value))
+                    if search_result:
+                        scan_result = True
+                        # Hash the SSN and check to see if it's been
+                        # detected yet.  If it hasn't, add it to the
+                        # list of unique ssn hashes.
+                        ssn_hash = self.hash_ssn(search_result.group(0))
+                        if ssn_hash not in self.ssn_hashes:
+                            self.ssn_hashes.append(ssn_hash)
+                        # Getting a list of all workbooks that had a SSN.
+                        excel_file_names = [
+                            _file['name'] for _file in self.ssn_excel
+                            ]
+                        # If the current workbook isn't in the list, add it.
+                        if path not in excel_file_names:
+                            self.ssn_excel.append({
+                                'name': path,
+                                'count': 1
+                            })
+                        else:
+                            for excel_sheet in self.ssn_excel:
+                                if excel_sheet['name'] == path:
+                                    excel_sheet['count'] += 1
+                    else:
+                        scan_result = False
+            wb.unload_sheet(sheet)
+        return scan_result
+
+    def ssn_scan_csv(self, path):
+        """Scans a CSV file for SSNs, returns True if a SSN is found
+        and returns False if a SSN is not found.
+
+        Required Input:
+        path - str(), The path to the CSV file.
+
+        Returns:
+        scan_results - bool(), True/False depending on the scan.
+
+        Exceptions:
+        PermissionError - Occurs when unable to open the CSV file.
+        Exception - Everything else."""
+        # Opening file.
+        try:
+            csv_file = open(path, 'r')
+        except PermissionError:
+            self.log.error(
+                'Unable to open %s due to permissions error' % path
+            )
+        except Exception:
+            self.log.exception('Unable to open %s.  See stack trace.')
+        # Using the reader function to create each row into a list of
+        # strings.
+        csv_reader = reader(csv_file)
+        for row in csv_reader:
+            # Checking each value in the list of strings returned by  the
+            # reader function to see if it's a SSN.
+            for value in row:
+                search_result = search(self.ssn, value)
+                if search_result:
+                    scan_result = True
+                    # Hash the SSN and check to see if it's been detected
+                    # yet.  If it hasn't, add it to the list of unique ssn
+                    # hashes.
+                    ssn_hash = self.hash_ssn(search_result.group(0))
+                    if ssn_hash not in self.ssn_hashes:
+                        self.ssn_hashes.append(ssn_hash)
+                    # Getting a list of all file names for files that
+                    # contained SSNs.  If the name isn't in the list,
+                    # add it to the list.
+                    ssn_file_names = [
+                        _file['name'] for _file in self.ssn_files
+                        ]
+                    if path not in ssn_file_names:
+                        self.ssn_files.append({
+                            'name': path,
+                            'count': 1})
+                    else:
+                        for ssn_file in self.ssn_files:
+                            if ssn_file['name'] == path:
+                                ssn_file['count'] += 1
+                else:
+                    scan_result = False
+        csv_file.close()
         return scan_result
