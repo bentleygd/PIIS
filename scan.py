@@ -62,7 +62,6 @@ def main():
                 # Checking for known encrypted files.
                 elif str(_file).endswith(('.pgp', '.gpg')):
                     log.info('Encrypted file.  Skipping over %r' % _file)
-                    pass
                 # Default check for everything else.
                 else:
                     log.debug('Scanning %r for SSNs' % _file)
